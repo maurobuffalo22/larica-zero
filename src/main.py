@@ -1,187 +1,212 @@
-# src/main.py
 import flet as ft
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 
-# Carrega as variáveis do arquivo .env
 load_dotenv()
-
-# Configura a API do Gemini
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def main(page: ft.Page):
-    # Configurações da página
     page.title = "Larica Zero"
-    page.padding = 20
+    page.padding = 30
     page.bgcolor = "#f5f5f5"
     page.scroll = "adaptive"
     
-    # Campo de texto para ingredientes
     ingredientes_input = ft.TextField(
-        label="Digite os ingredientes",
-        hint_text="Ex: arroz, frango, cenoura",
+        label="Digite os ingredientes disponíveis",
+        hint_text="Ex: frango, maionese, repolho, cebola",
         multiline=True,
         min_lines=3,
         max_lines=5,
         border_color="#4CAF50",
-        width=500
+        width=600
     )
     
-    # Container para exibir as receitas
-    receitas_container = ft.Column()
+    receita_container = ft.Column(spacing=20, width=800)
     
-        # Função que gera receitas com IA
-    def gerar_receitas(e):
-        print("=== BOTÃO CLICADO ===")  # DEBUG
+    def gerar_receita(e):
         ingredientes = ingredientes_input.value
-        print(f"Ingredientes capturados: '{ingredientes}'")  # DEBUG
         
-        if not ingredientes or ingredientes.strip() == "":
-            print("ERRO: Ingredientes vazios")  # DEBUG
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text("Por favor, digite alguns ingredientes!"),
-                open=True
-            )
+        if not ingredientes or not ingredientes.strip():
+            page.snack_bar = ft.SnackBar(content=ft.Text("Digite ingredientes!"), open=True)
             page.update()
             return
         
-        # Mostra mensagem de carregamento
-        print("Mostrando mensagem de carregamento...")  # DEBUG
-        page.snack_bar = ft.SnackBar(
-            content=ft.Text("Gerando receitas... Aguarde! 🔄"),
-            open=True
-        )
+        page.snack_bar = ft.SnackBar(content=ft.Text("Chef Bob Weed preparando..."), open=True)
         page.update()
         
         try:
-            print("Tentando conectar com Gemini...")  # DEBUG
-            
-            # Testa se a chave foi carregada
-            api_key = os.getenv("GEMINI_API_KEY")
-            print(f"Chave API: {api_key[:20] if api_key else 'NENHUMA'}...")  # DEBUG
-            
-            # Cria o modelo de IA
             model = genai.GenerativeModel('gemini-2.5-flash')
+            
+            prompt = f"""Você é o Chef Bob Weed, um chef descontraído e engraçado! 
 
-            print("Modelo criado com sucesso")  # DEBUG
-            
-            # Prompt para a IA
-            prompt = f"""
-            Com base nos seguintes ingredientes: {ingredientes}
-            
-            Gere 3 receitas deliciosas e práticas. Para cada receita, forneça:
-            
-            1. Nome da receita
-            2. Ingredientes necessários (incluindo os fornecidos)
-            3. Modo de preparo (passo a passo simples)
-            4. Tempo de preparo
-            
-            Formato de resposta:
-            
-            RECEITA 1:
-            Nome: [nome]
-            Ingredientes: [lista]
-            Modo de preparo: [passos]
-            Tempo: [tempo]
-            
-            RECEITA 2:
-            ...
-            
-            RECEITA 3:
-            ...
-            """
-            
-            print("Enviando prompt para IA...")  # DEBUG
-            # Gera as receitas
+Crie UMA receita usando APENAS estes ingredientes: {ingredientes}
+
+IMPORTANTE: Dê um nome ENGRAÇADO e CRIATIVO para a receita.
+
+Formato:
+Nome: [nome engraçado]
+Tempo: [tempo]
+Ingredientes:
+- item 1
+- item 2
+Preparo:
+1. passo 1
+2. passo 2
+Dica do Chef Bob Weed: [dica descontraída]"""
+
             response = model.generate_content(prompt)
-            print("Resposta recebida!")  # DEBUG
-            receitas_texto = response.text
-            print(f"Texto gerado (primeiros 100 chars): {receitas_texto[:100]}")  # DEBUG
+            texto_completo = response.text.strip().replace("**", "").replace("*", "")
             
-            # Limpa o container de receitas
-            receitas_container.controls.clear()
+            print(f"\n{'='*60}\n{texto_completo}\n{'='*60}\n")
             
-            # Adiciona o texto das receitas
-            receitas_container.controls.append(
-                ft.Container(
-                    content=ft.Column([
+            linhas_texto = texto_completo.split("\n")
+            
+            receita_container.controls.clear()
+            
+            texto_widgets = []
+            for linha in linhas_texto:
+                linha_lower = linha.lower().strip()
+                
+                if linha_lower.startswith("nome:"):
+                    nome = linha.split(":", 1)[1].strip()
+                    texto_widgets.append(ft.Container(height=10))
+                    texto_widgets.append(
                         ft.Text(
-                            "🍳 Suas Receitas",
-                            size=24,
+                            nome,
+                            size=32,
+                            color="#FF6B35",
                             weight=ft.FontWeight.BOLD,
-                            color="#2E7D32"
-                        ),
-                        ft.Divider(height=20),
-                        ft.Text(
-                            receitas_texto,
-                            size=14,
                             selectable=True
                         )
-                    ]),
-                    bgcolor="white",
-                    padding=20,
-                    border_radius=10,
-                    width=700
-                )
+                    )
+                    texto_widgets.append(ft.Container(height=15))
+                    
+                elif linha_lower.startswith("tempo:"):
+                    tempo = linha.split(":", 1)[1].strip()
+                    texto_widgets.append(
+                        ft.Text(
+                            f"Tempo: {tempo}",
+                            size=16,
+                            color="#000000",
+                            weight=ft.FontWeight.W_500,
+                            selectable=True
+                        )
+                    )
+                    texto_widgets.append(ft.Container(height=15))
+                    
+                elif linha_lower.startswith("ingredientes:"):
+                    texto_widgets.append(ft.Divider(height=20, color="#E0E0E0"))
+                    texto_widgets.append(
+                        ft.Text(
+                            "Ingredientes",
+                            size=24,
+                            color="#4CAF50",
+                            weight=ft.FontWeight.BOLD
+                        )
+                    )
+                    texto_widgets.append(ft.Container(height=10))
+                    
+                elif linha_lower.startswith("preparo:"):
+                    texto_widgets.append(ft.Container(height=10))
+                    texto_widgets.append(ft.Divider(height=20, color="#E0E0E0"))
+                    texto_widgets.append(
+                        ft.Text(
+                            "Modo de Preparo",
+                            size=24,
+                            color="#2196F3",
+                            weight=ft.FontWeight.BOLD
+                        )
+                    )
+                    texto_widgets.append(ft.Container(height=10))
+                    
+                elif "dica" in linha_lower and ("chef" in linha_lower or "bob" in linha_lower):
+                    dica_texto = linha.split(":", 1)[1].strip() if ":" in linha else linha
+                    texto_widgets.append(ft.Container(height=10))
+                    texto_widgets.append(ft.Divider(height=20, color="#E0E0E0"))
+                    texto_widgets.append(
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text(
+                                    "Dicas do Chef Bob Weed",
+                                    size=22,
+                                    color="#FF6B6B",
+                                    weight=ft.FontWeight.BOLD
+                                ),
+                                ft.Container(height=8),
+                                ft.Text(
+                                    dica_texto,
+                                    size=15,
+                                    color="#000000",
+                                    selectable=True
+                                )
+                            ]),
+                            bgcolor="#FFF9E6",
+                            padding=20,
+                            border_radius=10,
+                            border=ft.border.all(2, "#FFD54F")
+                        )
+                    )
+                    
+                elif linha.strip():
+                    texto_widgets.append(
+                        ft.Text(
+                            linha,
+                            size=15,
+                            color="#000000",
+                            selectable=True
+                        )
+                    )
+                else:
+                    texto_widgets.append(ft.Container(height=5))
+            
+            card = ft.Container(
+                content=ft.Column(
+                    controls=texto_widgets,
+                    scroll=ft.ScrollMode.AUTO,
+                    spacing=5
+                ),
+                bgcolor="white",
+                padding=35,
+                border_radius=15,
+                shadow=ft.BoxShadow(spread_radius=2, blur_radius=15, color="#00000015"),
+                width=800,
+                height=650
             )
             
-            print("Receitas adicionadas ao container")  # DEBUG
-            
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text("Receitas geradas com sucesso! ✅"),
-                open=True
-            )
+            receita_container.controls.append(card)
+            page.snack_bar = ft.SnackBar(content=ft.Text("Receita pronta!"), open=True)
             
         except Exception as erro:
-            print(f"ERRO CAPTURADO: {erro}")  # DEBUG
+            print(f"\n{erro}\n")
             import traceback
-            traceback.print_exc()  # Mostra erro completo
-            page.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Erro ao gerar receitas: {str(erro)}"),
-                open=True
-            )
+            traceback.print_exc()
+            page.snack_bar = ft.SnackBar(content=ft.Text(f"Erro: {erro}"), open=True)
         
-        print("Atualizando página...")  # DEBUG
         page.update()
-        print("=== FIM ===")  # DEBUG
-
     
-    # Botão para processar
-    processar_btn = ft.ElevatedButton(
-        text="Gerar Receitas 🍳",
-        on_click=gerar_receitas,
+    btn = ft.ElevatedButton(
+        text="Gerar Receita com Chef Bob Weed",
+        on_click=gerar_receita,
         bgcolor="#4CAF50",
         color="white",
-        width=500,
-        height=50
+        width=600,
+        height=55
     )
     
-    # Layout organizado
     page.add(
-        ft.Column(
-            [
-                ft.Text(
-                    "🍽️ Larica Zero",
-                    size=32,
-                    weight=ft.FontWeight.BOLD,
-                    color="#2E7D32"
-                ),
-                ft.Text(
-                    "Transforme sobras em receitas deliciosas!",
-                    size=16,
-                    color="#666666"
-                ),
-                ft.Divider(height=20, color="transparent"),
-                ingredientes_input,
-                ft.Divider(height=10, color="transparent"),
-                processar_btn,
-                ft.Divider(height=30, color="transparent"),
-                receitas_container
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER
-        )
+        ft.Column([
+            ft.Container(height=20),
+            ft.Text("Larica Zero", size=42, weight=ft.FontWeight.BOLD, color="#2E7D32"),
+            ft.Text("Com Chef Bob Weed", size=18, color="#FF6B35", text_align=ft.TextAlign.CENTER),
+            ft.Text("Transforme sobras em receita!", size=18, color="#666"),
+            ft.Container(height=20),
+            ingredientes_input,
+            ft.Container(height=15),
+            btn,
+            ft.Container(height=30),
+            receita_container
+        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
-# Inicia o aplicativo
 ft.app(target=main)
